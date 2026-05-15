@@ -1,0 +1,188 @@
+/* USER CODE BEGIN Header */
+/**
+  ******************************************************************************
+  * File Name          : freertos.c
+  * Description        : Code for freertos applications
+  ******************************************************************************
+  * @attention
+  *
+  * Copyright (c) 2026 STMicroelectronics.
+  * All rights reserved.
+  *
+  * This software is licensed under terms that can be found in the LICENSE file
+  * in the root directory of this software component.
+  * If no LICENSE file comes with this software, it is provided AS-IS.
+  *
+  ******************************************************************************
+  */
+/* USER CODE END Header */
+
+/* Includes ------------------------------------------------------------------*/
+#include "FreeRTOS.h"
+#include "task.h"
+#include "main.h"
+#include "cmsis_os.h"
+
+/* Private includes ----------------------------------------------------------*/
+/* USER CODE BEGIN Includes */
+#include "tim.h"
+/* USER CODE END Includes */
+
+/* Private typedef -----------------------------------------------------------*/
+/* USER CODE BEGIN PTD */
+
+/* USER CODE END PTD */
+
+/* Private define ------------------------------------------------------------*/
+/* USER CODE BEGIN PD */
+
+/* USER CODE END PD */
+
+/* Private macro -------------------------------------------------------------*/
+/* USER CODE BEGIN PM */
+
+/* USER CODE END PM */
+
+/* Private variables ---------------------------------------------------------*/
+/* USER CODE BEGIN Variables */
+osSemaphoreId_t viewUpdateSemaphore;
+
+osSemaphoreId_t loraDmaSemaphore;
+osSemaphoreId_t loraIrqSemaphore;
+
+osSemaphoreId_t uartTxDmaSemaphore;
+osSemaphoreId_t uartRxDmaSemaphore;
+
+osMutexId_t systemSettingsMutex;
+
+osThreadId_t loraTaskHandle;
+const osThreadAttr_t loraTask_attributes = {
+  .name = "loraTask",
+  .stack_size = 224 * 4 + 28 * 4 * CURRENT_LOG_LEVEL,
+  .priority = (osPriority_t) osPriorityNormal,
+};
+
+osThreadId_t uartTaskHandle;
+const osThreadAttr_t uartTask_attributes = {
+  .name = "uartTask",
+  .stack_size = 128 * 4 + 24 * 4 * CURRENT_LOG_LEVEL,
+  .priority = (osPriority_t) osPriorityNormal,
+};
+
+osThreadId_t uiTaskHandle;
+const osThreadAttr_t uiTask_attributes = {  
+  .name = "uiTask",
+  .stack_size = 736 * 4,
+  .priority = (osPriority_t) osPriorityNormal,
+};  
+
+#if SHOW_RUNTIME_STATS
+/* USER CODE END Variables */
+/* Definitions for defaultTask */
+osThreadId_t defaultTaskHandle;
+const osThreadAttr_t defaultTask_attributes = {
+  .name = "defaultTask",
+  .stack_size = 169 * 4,
+  .priority = (osPriority_t) osPriorityLow4,
+};
+
+/* Private function prototypes -----------------------------------------------*/
+/* USER CODE BEGIN FunctionPrototypes */
+#endif
+extern void startMainTask(void* argument);
+extern void startLoraTask(void* argument);
+extern void startUartTask(void*argument);
+extern void startUITask(void*argument);
+/* USER CODE END FunctionPrototypes */
+
+void StartDefaultTask(void *argument);
+
+void MX_FREERTOS_Init(void); /* (MISRA C 2004 rule 8.1) */
+
+/* Hook prototypes */
+void configureTimerForRunTimeStats(void);
+unsigned long getRunTimeCounterValue(void);
+
+/* USER CODE BEGIN 1 */
+/* Functions needed when configGENERATE_RUN_TIME_STATS is on */
+__weak void configureTimerForRunTimeStats(void)
+{
+
+}
+
+__weak unsigned long getRunTimeCounterValue(void)
+{
+  return 0;
+}
+/* USER CODE END 1 */
+
+/**
+  * @brief  FreeRTOS initialization
+  * @param  None
+  * @retval None
+  */
+void MX_FREERTOS_Init(void) {
+  /* USER CODE BEGIN Init */
+
+  /* USER CODE END Init */
+
+  /* USER CODE BEGIN RTOS_MUTEX */
+  systemSettingsMutex = osMutexNew(NULL);
+  /* USER CODE END RTOS_MUTEX */
+
+  /* USER CODE BEGIN RTOS_SEMAPHORES */
+  viewUpdateSemaphore = osSemaphoreNew(1, 0, NULL);
+
+  loraDmaSemaphore = osSemaphoreNew(1, 0, NULL);
+  loraIrqSemaphore = osSemaphoreNew(1, 0, NULL);
+
+  uartTxDmaSemaphore = osSemaphoreNew(1, 0, NULL);
+  uartRxDmaSemaphore = osSemaphoreNew(1, 0, NULL);
+  /* USER CODE END RTOS_SEMAPHORES */
+
+  /* USER CODE BEGIN RTOS_TIMERS */
+  /* start timers, add new ones, ... */
+  /* USER CODE END RTOS_TIMERS */
+
+  /* USER CODE BEGIN RTOS_QUEUES */
+  /* add queues, ... */
+  #if SHOW_RUNTIME_STATS
+  /* USER CODE END RTOS_QUEUES */
+
+  /* Create the thread(s) */
+  /* creation of defaultTask */
+  defaultTaskHandle = osThreadNew(StartDefaultTask, NULL, &defaultTask_attributes);
+
+  /* USER CODE BEGIN RTOS_THREADS */
+  #endif
+  loraTaskHandle = osThreadNew(startLoraTask, NULL, &loraTask_attributes);
+  uartTaskHandle = osThreadNew(startUartTask, NULL, &uartTask_attributes);
+  uiTaskHandle = osThreadNew(startUITask, NULL, &uiTask_attributes);
+  /* USER CODE END RTOS_THREADS */
+
+  /* USER CODE BEGIN RTOS_EVENTS */
+  /* add events, ... */
+  /* USER CODE END RTOS_EVENTS */
+
+}
+
+/* USER CODE BEGIN Header_StartDefaultTask */
+/**
+  * @brief  Function implementing the defaultTask thread.
+  * @param  argument: Not used
+  * @retval None
+  */
+/* USER CODE END Header_StartDefaultTask */
+void StartDefaultTask(void *argument)
+{
+  /* USER CODE BEGIN StartDefaultTask */
+  /* Infinite loop */
+  startMainTask(argument);
+  /* USER CODE END StartDefaultTask */
+}
+
+/* Private application code --------------------------------------------------*/
+/* USER CODE BEGIN Application */
+
+/* USER CODE END Application */
+
