@@ -1,14 +1,14 @@
-/* 
+/*
  *  SPDX-License-Identifier: MIT
- *  
+ *
  *  Copyright (c) 2026 Vasyl Dykyi <wasyl.dykyi@gmail.com>
  */
 
 #include "app.h"
 
-#include "printf.h"
 #include "FreeRTOS.h"
 #include "cmsis_os.h"
+#include "printf.h"
 #include "usart.h"
 
 #include "fonts.h"
@@ -21,6 +21,10 @@
 #include "lora.h"
 #include "system_settings.h"
 #include "uart.h"
+
+#define I2C_BUS_INDEX(inst) ((inst - I2C1) / (I2C2 - I2C1) + 1)
+#define SPI_BUS_INDEX(inst) ((inst - SPI1) / (SPI2 - SPI1) + 1)
+#define UART_INDEX(inst) ((inst - USART1) / (USART2 - USART1) + 1)
 
 extern "C" {
 void startLoraTask(void*)
@@ -38,18 +42,34 @@ void startUITask(void*)
     App::startUIThread();
 }
 
+void HAL_I2C_ErrorCallback(I2C_HandleTypeDef* hi2c)
+{
+    LOG_ERROR("I2C-%u error: %d, device address: 0x%02X\n", I2C_BUS_INDEX(hi2c->Instance), hi2c->ErrorCode, hi2c->Devaddress >> 1);
+}
+
+void HAL_I2C_MasterTxCpltCallback(I2C_HandleTypeDef* hi2c)
+{
+    SSD1306::onDataTransmitted(hi2c, App::s_display);
+}
+
+void HAL_SPI_ErrorCallback(SPI_HandleTypeDef* hspi)
+{
+    LOG_ERROR("SPI-%u, error: %d\n", SPI_BUS_INDEX(hspi->Instance), hspi->ErrorCode);
+}
+
 void HAL_SPI_TxRxCpltCallback(SPI_HandleTypeDef* hspi)
 {
-    if (hspi == &hspi1) {
-        Lora::onSpiTxRxDone();
-    }
+    Lora::onSpiTxRxDone(hspi, App::s_lora);
 }
 
 void HAL_SPI_TxCpltCallback(SPI_HandleTypeDef* hspi)
 {
-    if (hspi == &hspi1) {
-        Lora::onSpiTxRxDone();
-    }
+    Lora::onSpiTxRxDone(hspi, App::s_lora);
+}
+
+void HAL_UART_ErrorCallback(UART_HandleTypeDef* huart)
+{
+    LOG_ERROR("UART-%u, error: %d\n", UART_INDEX(huart->Instance), huart->ErrorCode);
 }
 
 void HAL_UART_TxCpltCallback(UART_HandleTypeDef* huart)
@@ -63,6 +83,7 @@ void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef* huart, uint16_t Size)
 }
 }
 
+SSD1306* App::s_display = nullptr;
 View* App::s_view = nullptr;
 Lora* App::s_lora = nullptr;
 Uart* App::s_uart = nullptr;
@@ -178,7 +199,8 @@ void App::startUIThread()
     Gpio btnUpGpio(BTN_UP_GPIO_Port, BTN_UP_Pin);
 
     SSD1306 display(&hi2c1, 0x3C);
-    View view(&display, &btnMainGpio, &btnDownGpio, &btnUpGpio);
+    s_display = &display;
+    View view(s_display, &btnMainGpio, &btnDownGpio, &btnUpGpio);
     s_view = &view;
     view.startThread();
 }
@@ -194,18 +216,18 @@ void App::getSettings()
 extern "C" {
 void startMainTask(void*)
 {
-    LOG_INFO("======= Start main thread =======\n");
+    LOG_INFO("======= Start Main thread =======\n");
     char buffer[256];
 
     for (;;) {
         vTaskGetRunTimeStats(buffer);
-        printf("Counter: %lu %lu\n", getRunTimeCounterValue(), HAL_GetTick());
 
-        printf("\n------------------------------------------------------\n");
+        printf("--------------------- CPU Load -----------------------\n");
         printf("\nName\t\t\t\t\t\tCPU Time\tCPU %%\n");
         printf("------------------------------------------------------\n");
         printf("%s", buffer);
         printf("------------------------------------------------------\n\n");
+        printf("------------------- Memory usage ---------------------\n");
         printf("\nName\t\t\t\tStatus\tPrio\tStack\tID\n");
         printf("------------------------------------------------------\n");
         vTaskList(buffer);
@@ -213,12 +235,12 @@ void startMainTask(void*)
         printf("------------------------------------------------------\n\n");
 
         uint32_t freeHeap = xPortGetFreeHeapSize();
-        printf("Free Heap size:\t%lu bytes\n", freeHeap);
+        printf("Free Heap size:\t\t\t\t%lu bytes\n", freeHeap);
 
         uint32_t minEverFreeHeap = xPortGetMinimumEverFreeHeapSize();
-        printf("Min free Heap size:\t%lu bytes\n", minEverFreeHeap);
+        printf("Min free Heap size:\t\t%lu bytes\n", minEverFreeHeap);
 
-        printf("\n===================================================\n\n");
+        printf("\n=====================================================\n\n");
         osDelay(RUNTIME_STATS_UPDATE_PERIOD_MS);
     }
 }

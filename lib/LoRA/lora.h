@@ -17,7 +17,7 @@ using LoraBase = LinkController<256, 256>;
 class Lora : public LoraBase
 {
 public:
-    static void onSpiTxRxDone();
+    static void onSpiTxRxDone(SPI_HandleTypeDef* hspi, Lora* inst);
 
     Lora(SPI_HandleTypeDef* spiDevice, Gpio* cs, Gpio* reset, Gpio* irq);
     ~Lora() override;

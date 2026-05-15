@@ -10,12 +10,16 @@
 #include "usart.h"
 #include "timers.h"
 
-class Lora;
+class SSD1306;
 class View;
+class Lora;
 class Uart;
 struct Settings;
 
 extern "C" {
+extern void HAL_I2C_MasterTxCpltCallback(I2C_HandleTypeDef* hi2c);
+extern void HAL_SPI_TxRxCpltCallback(SPI_HandleTypeDef* hspi);
+extern void HAL_SPI_TxCpltCallback(SPI_HandleTypeDef* hspi);
 extern void HAL_UART_TxCpltCallback(UART_HandleTypeDef* huart);
 extern void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size);  
 }
@@ -30,10 +34,15 @@ public:
 
 private:
     static void getSettings();
+
+    friend void HAL_I2C_MasterTxCpltCallback(I2C_HandleTypeDef* hi2c);
+    friend void HAL_SPI_TxRxCpltCallback(SPI_HandleTypeDef* hspi);
+    friend void HAL_SPI_TxCpltCallback(SPI_HandleTypeDef* hspi);
     friend void HAL_UART_TxCpltCallback(UART_HandleTypeDef* huart);
     friend void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size);
 
 private:
+    static SSD1306* s_display;
     static View* s_view;
     static Lora* s_lora;
     static Uart* s_uart;

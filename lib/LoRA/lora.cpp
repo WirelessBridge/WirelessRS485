@@ -15,9 +15,11 @@ extern osSemaphoreId_t loraDmaSemaphore;
 extern osSemaphoreId_t loraIrqSemaphore;
 }
 
-void Lora::onSpiTxRxDone()
-{
-    osSemaphoreRelease(loraDmaSemaphore);
+void Lora::onSpiTxRxDone(SPI_HandleTypeDef* hspi, Lora* inst)
+{    
+    if (inst != nullptr && hspi == inst->m_spiDevice) {
+        osSemaphoreRelease(loraDmaSemaphore);
+    }
 }
 
 Lora::Lora(SPI_HandleTypeDef* spiDevice, Gpio* cs, Gpio* reset, Gpio* irq)

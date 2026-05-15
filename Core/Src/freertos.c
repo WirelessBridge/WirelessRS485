@@ -45,6 +45,7 @@
 
 /* Private variables ---------------------------------------------------------*/
 /* USER CODE BEGIN Variables */
+osSemaphoreId_t i2cTxDmaSemaphore;
 osSemaphoreId_t viewUpdateSemaphore;
 
 osSemaphoreId_t loraDmaSemaphore;
@@ -72,6 +73,7 @@ const osThreadAttr_t uartTask_attributes = {
 osThreadId_t uiTaskHandle;
 const osThreadAttr_t uiTask_attributes = {  
   .name = "uiTask",
+  //.stack_size = 736 * 4,
   .stack_size = 736 * 4,
   .priority = (osPriority_t) osPriorityNormal,
 };  
@@ -131,8 +133,8 @@ void MX_FREERTOS_Init(void) {
   /* USER CODE END RTOS_MUTEX */
 
   /* USER CODE BEGIN RTOS_SEMAPHORES */
+  i2cTxDmaSemaphore = osSemaphoreNew(1, 0, NULL);
   viewUpdateSemaphore = osSemaphoreNew(1, 0, NULL);
-
   loraDmaSemaphore = osSemaphoreNew(1, 0, NULL);
   loraIrqSemaphore = osSemaphoreNew(1, 0, NULL);
 
